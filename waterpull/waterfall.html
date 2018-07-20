@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <style>
+        body{
+            background: #ddd;
+        }
+        .container{
+            background: #fff;
+            width: 1225px;
+            margin: 0 auto;
+            position: relative;
+            overflow: hidden;
+            position: relative;
+        }
+        .container:after{
+            content: "";
+            display: block;
+            clear: both;
+        }
+        .box{
+            width:200px;
+            box-sizing: border-box;
+            box-shadow:  0 0 5px #ddd;
+            margin-left: 10px;
+            margin-right: 10px;
+            float: left;
+        }
+        .box img{
+            width: 100%;
+            height: 100%;
+        }
+        .loading{
+            text-align: center;
+        }
+       
+    </style>
+</head>
+<body>
+    <div class="container">
+       
+    </div>
+
+    <div class="loading">
+        <!-- <img src="loading.gif" alt=""> -->
+    </div>
+</body>
+</html>
+<script src="jquery-3.2.1.js"></script>
+<script>
+    //瀑布流的步骤;
+    //瀑布流效果的原理;每一个图片都有一个小容器,这些图片定宽不定高,这是瀑布流的特点;
+    //所以,我们找到一个接口之后,通过分析数据,把图片渲染到页面上,然后,判定第一排中哪个
+    //高度最小的,就把下面的图片排到最小高度图片的下面;
+    //假设接口是:http://www.wookmark.com/api/json/popular；
+    function Waterfall(){
+          
+    }
+    $.extend(Waterfall.prototype, {
+         init(){
+           this.container = $(".container");
+            this.loadJson()
+            .done($.proxy(function( res ){//调用this.loadJson的方法，等于拿到了ajax的deference对象；
+                              //所以，可以在后面接着用done的方法；
+            //   console.log(  res instanceof Array )//true;
+              //下面应该处理这个数据然后渲染页面了；我们再写一个方法；在这里调用；
+              this.rendring( res );//把实参传进方法里，res接受就可以得到这个数据了；
+              this.sortEle();//在这里调用的计算最小高度的方法；
+            }, this ) 
+           )},
+        loadJson(){
+          return $.ajax({
+              type : "get",
+              dataType : "jsonp",
+              url : "http://www.wookmark.com/api/json/popular"
+             })
+             //这里返回的是deference对象，和promise一样的，也是一个状态机；
+             //成功有个done方法，.done(function(res){}),res就是请求回来的数据；所以，我们把这
+             //deference暴露出去，所以，可以在init里用done()方法对这个数据做处理；
+             //注意，这个方法和promise的用法一样的；
+
+        },
+        //渲染页面功能；
+        rendring( data ){
+          console.log( data );
+          var html =``;
+          for( var i = 0; i < data.length; i++ ){
+            html +=`
+                   <div class="box" style="height:${popHeight(data[i].width, data[i].height)}px"> 
+                    <img src="${data[i].image}" alt=""/>
+                    </div>
+                   `
+            }
+            //在做瀑布流的时候，我们怎样让图片等比缩放填进容器呢？这里，我们可以这样做；
+            //为什么要让图片等比填充容器，因为每个图片的宽高是不等的，如果限定图片的
+            //宽度了，那么我们就要根据图片被限定宽度决定高度应该缩放的比例，
+            //封装一个函数，功能是根据宽度的比例算出每个图片的原高被缩放后的高度；
+            function popHeight( width, height){
+                return  220/width *height;//拿现在图片的高度比上原来的的宽度得出比例；
+                                        //再乘以原高度，算出该缩放的后的高
+            }
+           this.container.html( html ) 
+         },
+
+    //    // 定义哪一列是最小的高度；
+        sortEle(){
+            var items = this.container.children();
+            console.log( items );
+            //思路：找出这些box;然后找出第一排的几张图片；
+            //找出高度最小的图片的最小的图片和下标；
+            var heightArray =[];//定义一个数组，用来储存box的高度； 
+            for( var i = 0; i < items.length; i++){
+               if( i < 5 ){
+                //   console.log( items.eq(i).height())//注意，这是jquery元素，所以，不是
+                //记录第一排的高度；                                    //不能写成item[i],要写成item.eq(i)
+                    heightArray.push( items.eq(i).height() );//
+               }else{
+                 //取出最小值；
+                 var minHeight = Math.min.apply(false,heightArray)//取出数组中的最小值；
+                 var minIndex = heightArray.indexOf( minHeight )//取出最小值；
+                //  console.log( minHeight, minIndex  )
+                
+                //点睛之笔=========================
+                //==================================
+                heightArray[minIndex] = heightArray[minIndex] + items.eq(i).height();
+               
+                items.eq(i).css({
+                   position : "absolute",
+                   left : items.eq( minIndex).position().left,
+                   top : minHeight
+                })
+            }
+        }
+        //点睛之笔二：================================================
+        //===========================================================
+        //大容器的高度是最后一个加载出来的元素的元素离顶部的高度；
+         $(".container").height(items.eq(items.length - 1) .offset().top);
+     }
+    })
+    new Waterfall().init();
+
+</script>
